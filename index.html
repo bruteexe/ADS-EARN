@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Earn Coins – ReferToEarn</title>
+    <!-- AdsGram SDK -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    <!-- Taddy SDK -->
+    <script src="https://sdk.taddy.pro/web/taddy.min.js?1315" data-pub-id="d9b9211cb9f236427c766509207be060"></script>
+    <style>
+        /* ... (keep your existing styles) ... */
+        .ad-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(90deg, #0088cc, #005f8c);
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: 48px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:active { transform: scale(0.97); }
+        button:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #aaa;
+            min-height: 40px;
+        }
+        .footer {
+            margin-top: 24px;
+            font-size: 11px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="coin-icon">🪙</div>
+        <h1>Earn Coins</h1>
+        <div class="balance">💰 Balance: <span id="balance">0</span> coins</div>
+        <div class="ad-buttons">
+            <button id="watchAdsGramBtn">🎮 Watch Ad (AdsGram)</button>
+            <button id="watchTaddyBtn">🎮 Watch Ad (Taddy)</button>
+        </div>
+        <div id="status">✨ Choose an ad option to earn coins</div>
+        <div class="footer">Watch the entire ad to receive coins</div>
+    </div>
+
+    <script>
+        // ---------- CONFIGURATION ----------
+        const ADSGRAM_BLOCK_ID = "27353"; // Your AdsGram Block ID
+        let adsGramController = null;
+
+        // DOM elements
+        const balanceSpan = document.getElementById('balance');
+        const adsGramBtn = document.getElementById('watchAdsGramBtn');
+        const taddyBtn = document.getElementById('watchTaddyBtn');
+        const statusDiv = document.getElementById('status');
+        let currentBalance = 0;
+
+        // Helper to update UI balance (optional – you can also fetch from backend)
+        function updateBalanceUI(balance) {
+            balanceSpan.innerText = Math.floor(balance);
+            currentBalance = balance;
+        }
+
+        // ---------- ADSGRAM INTEGRATION ----------
+        function initAdsGram() {
+            if (!window.Adsgram) {
+                console.error("AdsGram SDK not loaded");
+                statusDiv.innerHTML = '⚠️ AdsGram service not ready. Please refresh.';
+                return false;
+            }
+            try {
+                adsGramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+                console.log("AdsGram initialized with blockId:", ADSGRAM_BLOCK_ID);
+                return true;
+            } catch (err) {
+                console.error("AdsGram init error:", err);
+                statusDiv.innerHTML = '❌ AdsGram initialization failed.';
+                return false;
+            }
+        }
+
+        function showAdsGramAd() {
+            if (!adsGramController) {
+                statusDiv.innerHTML = '⚠️ AdsGram service not ready. Try again.';
+                return;
+            }
+            statusDiv.innerHTML = '🔄 Loading AdsGram ad... Please wait.';
+            statusDiv.style.color = '#ffd700';
+            adsGramBtn.disabled = true;
+
+            adsGramController.show().then(() => {
+                statusDiv.innerHTML = '✅ AdsGram ad completed! Coins will be added automatically.';
+                statusDiv.style.color = '#4caf50';
+                adsGramBtn.disabled = false;
+                setTimeout(() => {
+                    statusDiv.innerHTML = '✨ Tap a button to watch another ad';
+                    statusDiv.style.color = '#aaa';
+                }, 2500);
+            }).catch((error) => {
+                console.error('AdsGram ad error:', error);
+                statusDiv.innerHTML = '❌ AdsGram ad failed or was skipped. No coins added.';
+                statusDiv.style.color = '#ff6b6b';
+                adsGramBtn.disabled = false;
+            });
+        }
+
+        // ---------- TADDY INTEGRATION ----------
+        function showTaddyAd() {
+            const taddy = window.Taddy;
+            if (!taddy) {
+                statusDiv.innerHTML = '⚠️ Taddy service not ready. Please refresh.';
+                return;
+            }
+
+            statusDiv.innerHTML = '🔄 Loading Taddy ad... Please wait.';
+            statusDiv.style.color = '#ffd700';
+            taddyBtn.disabled = true;
+
+            // Display an interstitial ad
+            const ads = taddy.ads();
+            ads.interstitial({
+                onViewThrough: (id) => {
+                    console.log(`Taddy ad viewed completely. ID: ${id}`);
+                    statusDiv.innerHTML = '✅ Taddy ad completed! Coins will be added automatically.';
+                    statusDiv.style.color = '#4caf50';
+                    taddyBtn.disabled = false;
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '✨ Tap a button to watch another ad';
+                        statusDiv.style.color = '#aaa';
+                    }, 2500);
+                },
+                onClosed: () => {
+                    console.log('Taddy ad was closed early.');
+                    statusDiv.innerHTML = '❌ Ad closed early. No coins added.';
+                    statusDiv.style.color = '#ff6b6b';
+                    taddyBtn.disabled = false;
+                },
+                onError: (err) => {
+                    console.error('Taddy ad error:', err);
+                    statusDiv.innerHTML = '❌ Taddy ad failed. No coins added.';
+                    statusDiv.style.color = '#ff6b6b';
+                    taddyBtn.disabled = false;
+                }
+            });
+        }
+
+        // ---------- EVENT LISTENERS ----------
+        adsGramBtn.addEventListener('click', showAdsGramAd);
+        taddyBtn.addEventListener('click', showTaddyAd);
+
+        // ---------- ON PAGE LOAD ----------
+        window.addEventListener('load', () => {
+            // Initialize AdsGram
+            const adsGramInitOk = initAdsGram();
+            if (!adsGramInitOk) {
+                adsGramBtn.disabled = true;
+            }
+
+            // Initialize Taddy
+            const taddy = window.Taddy;
+            if (taddy) {
+                taddy.init('d9b9211cb9f236427c766509207be060');
+                taddy.ready();
+                console.log("Taddy SDK initialized and ready.");
+            } else {
+                console.error("Taddy SDK not loaded.");
+                taddyBtn.disabled = true;
+                statusDiv.innerHTML = '⚠️ Taddy service not ready. Please refresh.';
+            }
+        });
+    </script>
+</body>
+</html>adController) {
+                statusDiv.innerHTML = '⚠️ Ad service not ready. Try again.';
+                return;
+            }
+            statusDiv.innerHTML = '🔄 Loading ad... Please wait.';
+            statusDiv.style.color = '#ffd700';
+            watchBtn.disabled = true;
+
+            adController.show().then(() => {
+                // Ad was fully watched
+                const userId = getTelegramUserId();
+                rewardUser(userId, 1);
+            }).catch((error) => {
+                // Ad failed, was skipped, or user closed early
+                console.error('Ad error:', error);
+                statusDiv.innerHTML = '❌ Ad failed or was skipped. No coins added.';
+                statusDiv.style.color = '#ff6b6b';
+                watchBtn.disabled = false;
+                setTimeout(() => {
+                    statusDiv.innerHTML = '✨ Tap the button to try again';
+                    statusDiv.style.color = '#aaa';
+                }, 2000);
+            });
+        }
+
+        // ---------- Event Listeners ----------
+        watchBtn.addEventListener('click', () => {
+            showRewardedAd();
+        });
+
+        // ---------- On page load ----------
+        window.addEventListener('load', () => {
+            const initOk = initAdsGram();
+            if (!initOk) {
+                watchBtn.disabled = true;
+                statusDiv.innerHTML = '⚠️ Ad service unavailable. Please contact support.';
+            } else {
+                // Optionally fetch current balance if backend provides a getter
+                const userId = getTelegramUserId();
+                fetchBalance(userId).catch(() => {});
+            }
+        });
+    </script>
+</body>
+</html>
